@@ -1,0 +1,21 @@
+filename_base: "cache_before_cuts_SR2"
+data_type: Rn220
+pax_settings:
+  pax_version: '6.10.1'
+  minitrees_to_load:
+    - 'Corrections'
+    - 'Basics'
+    - 'Fundamentals'
+    - 'Extended'
+    - 'LargestPeakProperties'
+    - 'TotalProperties'
+    - 'Proximity'
+    - 'FlashIdentification'
+    - 'TailCut'
+    - 'PatternReconstruction'
+
+  preselection:
+    - 'cs1<500'
+    - 's2>200'
+    - 'cs1 > 0'
+    - 'cs2 > 0'

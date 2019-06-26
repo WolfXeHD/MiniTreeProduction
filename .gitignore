@@ -1,0 +1,14 @@
+*.cpp*
+*.cpp.*
+*cpp.*
+*.swp
+*.pkl
+*.root
+*.ipynb
+*.root
+*.log
+__pycache__/
+logs/
+*.py~
+*.pcm
+.session.vim
