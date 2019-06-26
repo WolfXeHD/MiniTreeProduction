@@ -16,6 +16,7 @@ x = """#!/bin/bash
 #SBATCH --qos=xenon1t
 #SBATCH --partition=xenon1t
 #SBATCH --mail-user=twolf@mpi-hd.mpg.de
+#SBATCH --mail-type=NONE
 export PATH=/project/lgrandi/anaconda3/bin:$PATH
 #  export PROCESSING_DIR=/home/twolf/scratch-midway2/production_{run}
 echo PATH=$PATH
@@ -45,7 +46,7 @@ hax.init(experiment='XENON1T',
          raw_data_local_path=['project/lgrandi/xenon1t'],
          main_data_paths=['/dali/lgrandi/xenon1t/processed/pax_v' + pax_version],
          #minitree_paths = ['/home/hasterok/minitrees/pax_v'+pax_version,'/project/lgrandi/xenon1t/minitrees/pax_v'+pax_version,'/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version],
-         minitree_paths = ['/home/twolf/scratch-midway2', '/dali/lgrandi/xenon1t/minitrees/pax_v'+pax_version,'/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version],
+         minitree_paths = ['.', '/dali/lgrandi/xenon1t/minitrees/pax_v'+pax_version,'/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version],
          make_minitrees = True,
         #pax_version_policy='loose'
         )
@@ -63,9 +64,8 @@ if parsed_args["debug"]:
 
 # For every run, make and submit the script
 for run in runs_to_submit:
-    print(run)
-    #  y = x.format(run=run)
-    #  submit_job(y)
+    y = x.format(run=run)
+    submit_job(y)
 
 # Check your jobs with: 'qstat -u <username>'
 # Check number of submitted jobs with 'qstat -u <username> | wc -l' (is off by +2 btw)

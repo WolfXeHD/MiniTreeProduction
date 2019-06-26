@@ -1,4 +1,5 @@
 import datetime
+import numpy as np
 print("Starting now: {}".format(datetime.datetime.now()))
 #  import ROOT
 #  import numpy as np
@@ -17,11 +18,20 @@ import hax
 import sys
 import argparse
 import yaml
+import pandas as pd
 
+def check_positive(value):
+    ivalue = int(value)
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError("%s is an invalid positive int value" % value)
+    return ivalue
 
 def parse_args(args):
   parser = argparse.ArgumentParser(description='Load data from processed minitrees.')
   parser.add_argument('--debug', action='store_true')
+  parser.add_argument('--merge', action='store_true')
+  parser.add_argument('--load', action='store_true')
+  parser.add_argument('--splits', type=check_positive, default=1)
   parser.add_argument('--config', type=str, required=True)
 
   args = vars(parser.parse_args())
@@ -107,6 +117,56 @@ def ConfigureLax():
   lax_version = lax.__version__
 
 
+def PicklePerRuns(part_id, part_run_names, pax_settings, parsed_config, parsed_args):
+  # Load the minitrees
+  minitrees_to_load = pax_settings["minitrees_to_load"]
+  preselection = pax_settings["preselection"]
+  df = hax.minitrees.load(part_run_names, minitrees_to_load, preselection=preselection, num_workers=5)
+
+  # get all cience run 0 cuts
+  sr1_cuts = lax.lichens.sciencerun1.LowEnergyBackground()
+  cut_names = lax.lichens.sciencerun1.LowEnergyBackground().get_cut_names()
+  print(cut_names)
+
+  #Now run the lichens over the data we already loaded and get the booleans
+  data = sr1_cuts.process(df)
+
+  #file_name = 'cache_before_cuts_SR2_Bkg_' + t.strftime("%d-%m-%Y") + '.pkl'
+  filename_base = parsed_config["filename_base"]
+
+  if part_id != -1:
+    filename = "Part{part}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
+                                                                     filename_base=parsed_config["filename_base"],
+                                                                     data_type=parsed_config["data_type"],
+                                                                     time=t.strftime("%d-%m-%Y"))
+  else:
+    filename = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
+                                                               data_type=parsed_config["data_type"],
+                                                               time=t.strftime("%d-%m-%Y"))
+  if parsed_args["debug"]:
+    filename = "DEBUG_" + filename
+  print(filename)
+
+  data.to_pickle(filename)  # where to save it, usually as a .pkl
+
+def MergeParts(parsed_args, parsed_config):
+  if parsed_args["splits"] == 1:
+    print("No merge needed!")
+  else:
+    l_data = []
+    for part_id in range(0, parsed_args["splits"]):
+      file_to_open = "Part{part}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
+                                                                       filename_base=parsed_config["filename_base"],
+                                                                       data_type=parsed_config["data_type"],
+                                                                       time=t.strftime("%d-%m-%Y"))
+      l_data.append(pd.read_pickle(file_to_open))
+    master_df = pd.concat(l_data)
+    file_to_write = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
+                                                               data_type=parsed_config["data_type"],
+                                                               time=t.strftime("%d-%m-%Y"))
+    master_df.to_pickle(file_to_write)
+
+
 def main(arg1):
   parsed_args, parsed_config = parse_args(arg1)
   pax_settings = parsed_config["pax_settings"]
@@ -137,38 +197,26 @@ def main(arg1):
 
 
   dsets_type = SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets)
-  minitrees_to_load = pax_settings["minitrees_to_load"]
-  preselection = pax_settings["preselection"]
 
-  print("Loading minitrees: {}".format(datetime.datetime.now()))
   if parsed_args['debug']:
     run_names = dsets_type["name"].tolist()[:10]
   else:
     run_names = dsets_type["name"].tolist()
 
-  # Load the minitrees
-  df = hax.minitrees.load(run_names, minitrees_to_load, preselection=preselection, num_workers=5)
+  if parsed_args["load"]:
+    print("Loading minitrees: {}".format(datetime.datetime.now()))
+    if parsed_args["splits"] != 1:
+      splitted_arrays = np.array_split(run_names, parsed_args["splits"])
+      for part_idx, split in enumerate(splitted_arrays):
+        PicklePerRuns(part_idx, split, pax_settings, parsed_config, parsed_args)
+    else:
+        PicklePerRuns(-1, split, pax_settings, parsed_config, parsed_args)
+  else:
+    print("Loading minitrees not required.")
 
-  # get all cience run 0 cuts
-  sr1_cuts = lax.lichens.sciencerun1.LowEnergyBackground()
-  cut_names = lax.lichens.sciencerun1.LowEnergyBackground().get_cut_names()
-  print(cut_names)
+  if parsed_args["merge"]:
+    MergeParts(parsed_args, parsed_config)
 
-  #Now run the lichens over the data we already loaded and get the booleans
-  data = sr1_cuts.process(df)
-
-  data.head()
-
-  #file_name = 'cache_before_cuts_SR2_Bkg_' + t.strftime("%d-%m-%Y") + '.pkl'
-  filename_base = parsed_config["filename_base"]
-  filename = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=filename_base,
-                                                                   data_type=parsed_config["data_type"],
-                                                                   time=t.strftime("%d-%m-%Y"))
-  if parsed_args["debug"]:
-    filename = "DEBUG_" + filename
-  print(filename)
-
-  data.to_pickle(filename)  # where to save it, usually as a .pkl
 
 if __name__ == "__main__":
       main(sys.argv[:1])

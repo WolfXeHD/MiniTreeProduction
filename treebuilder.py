@@ -14,7 +14,7 @@ hax.init(experiment='XENON1T',
          raw_data_access_mode = 'local',
          raw_data_local_path = ['project/lgrandi/xenon1t'],
          main_data_paths=['/dali/lgrandi/xenon1t/processed/pax_v' + pax_version],
-         minitree_paths = ['/home/twolf/StartupConstanze', '/dali/lgrandi/xenon1t/minitrees/pax_v'+pax_version,'/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version],
+         minitree_paths = ['.', '/dali/lgrandi/xenon1t/minitrees/pax_v'+pax_version,'/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version],
          make_minitrees = True
 )
 
