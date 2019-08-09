@@ -9,7 +9,6 @@ x = """#!/bin/bash
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=8000
-#SBATCH --mail-type=ALL
 #SBATCH --output=minitree_%J.log
 #SBATCH --error=minitree_%J.log
 #SBATCH --account=pi-lgrandi
@@ -18,11 +17,13 @@ x = """#!/bin/bash
 #SBATCH --mail-user=twolf@mpi-hd.mpg.de
 #SBATCH --mail-type=NONE
 export PATH=/project/lgrandi/anaconda3/bin:$PATH
-#  export PROCESSING_DIR=/home/twolf/scratch-midway2/production_{run}
+export PROCESSING_DIR=/home/twolf/scratch-midway2/production_{run}
 echo PATH=$PATH
 
-cp treebuilder.py ${{TMPDIR}}
-cd ${{TMPDIR}}
+mkdir -p ${{PROCESSING_DIR}}
+
+cp treebuilder.py ${{PROCESSING_DIR}}
+cd ${{PROCESSING_DIR}}
 ls -ltrha
 rm -f pax_event_class*
 source activate pax_head

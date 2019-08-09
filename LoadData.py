@@ -19,6 +19,8 @@ import sys
 import argparse
 import yaml
 import pandas as pd
+import pickle
+import dask.dataframe as dd
 
 def check_positive(value):
     ivalue = int(value)
@@ -51,6 +53,10 @@ def parse_args(args):
   return args, parsed_config
 
 
+def GetUniqueTagsOfDataset(dataset):
+  return dataset.unique().tolist()
+
+
 def ConfigurePax():
   """TODO: Docstring for ConfigurePax.
   :returns: TODO
@@ -64,6 +70,8 @@ def ConfigurePax():
   gains = pax_config['DEFAULT']['gains']
 
   pax_version = '6.10.1'
+  minitree_paths = ['/home/twolf/scratch-midway2', '/dali/lgrandi/xenon1t/minitrees/pax_v'+pax_version, '/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version, '/project/lgrandi/xenon1t/minitrees/pax_v'+pax_version]
+  print(minitree_paths)
 
   hax.__version__
   hax.init(experiment='XENON1T',
@@ -71,9 +79,10 @@ def ConfigurePax():
            raw_data_access_mode = 'local',
            raw_data_local_path = ['project/lgrandi/xenon1t'],
            main_data_paths=['/dali/lgrandi/xenon1t/processed/pax_v' + pax_version],
-           minitree_paths = ['/home/twolf/scratch-midway2', '/dali/lgrandi/xenon1t/minitrees/pax_v'+pax_version,'/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version],
+           minitree_paths=minitree_paths,
            make_minitrees = False,
-           # pax_version_policy='loose'
+           log_level='DEBUG',
+           #  pax_version_policy='loose'
           )
   return hax
 
@@ -95,13 +104,11 @@ def SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets):
 
   # Select tags
   if parsed_config["data_type"] == "Rn220" or parsed_config["data_type"] == "Kr83m":
-    dsets_type = hax.runs.tags_selection(dsets_type, include=['sciencerun2_preliminary'])
+    dsets_type = hax.runs.tags_selection(dsets_type, include=['sciencerun2_preliminary'],
+        exclude=pax_settings['tags_to_exclude'])
   elif parsed_config["data_type"] == "Bkg":
-    dsets_type = hax.runs.tags_selection(dsets_type, include=['sciencerun2_preliminary'], exclude=['MVoff,blinded', 'NG,MVoff', 'Noise',
-           'blinded,MVoff', 'blinded,earthquake', 'blinded,flash',
-           'blinded,messy,PMTtrip,MVoff,flash', 'blinded,messy,flash', 'messy',
-           'messy,flash', 'messy,flash,pmttrip', 'messy,pmttrip,flash',
-           'messy,pmttrip,flash,ramping', 'noise', 'test', 'trip,messy'])
+    dsets_type = hax.runs.tags_selection(dsets_type, include=['sciencerun2_preliminary'],
+        exclude=pax_settings['tags_to_exclude'])
   else:
     print("Unknown type {}".format(parsed_config["data_type"]))
     raise SystemExit
@@ -117,11 +124,12 @@ def ConfigureLax():
   lax_version = lax.__version__
 
 
-def PicklePerRuns(part_id, part_run_names, pax_settings, parsed_config, parsed_args):
+def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, parsed_args):
   # Load the minitrees
   minitrees_to_load = pax_settings["minitrees_to_load"]
   preselection = pax_settings["preselection"]
-  df = hax.minitrees.load(part_run_names, minitrees_to_load, preselection=preselection, num_workers=5)
+  df = hax.minitrees.load(part_run_names, minitrees_to_load, preselection=preselection, num_workers=4)
+
 
   # get all cience run 0 cuts
   sr1_cuts = lax.lichens.sciencerun1.LowEnergyBackground()
@@ -135,10 +143,11 @@ def PicklePerRuns(part_id, part_run_names, pax_settings, parsed_config, parsed_a
   filename_base = parsed_config["filename_base"]
 
   if part_id != -1:
-    filename = "Part{part}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
+    filename = "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
                                                                      filename_base=parsed_config["filename_base"],
                                                                      data_type=parsed_config["data_type"],
-                                                                     time=t.strftime("%d-%m-%Y"))
+                                                                     time=t.strftime("%d-%m-%Y"),
+                                                                     length=length)
   else:
     filename = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
                                                                data_type=parsed_config["data_type"],
@@ -149,16 +158,20 @@ def PicklePerRuns(part_id, part_run_names, pax_settings, parsed_config, parsed_a
 
   data.to_pickle(filename)  # where to save it, usually as a .pkl
 
+
 def MergeParts(parsed_args, parsed_config):
   if parsed_args["splits"] == 1:
     print("No merge needed!")
   else:
     l_data = []
     for part_id in range(0, parsed_args["splits"]):
-      file_to_open = "Part{part}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
+      file_to_open = "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
                                                                        filename_base=parsed_config["filename_base"],
                                                                        data_type=parsed_config["data_type"],
-                                                                       time=t.strftime("%d-%m-%Y"))
+                                                                       time=t.strftime("%d-%m-%Y"),
+                                                                       length=parsed_args["splits"])
+
+
       l_data.append(pd.read_pickle(file_to_open))
     master_df = pd.concat(l_data)
     file_to_write = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
@@ -181,20 +194,15 @@ def main(arg1):
 
   # select background data only
   dsets_bkg = dsets[(datasets.source__type == 'none') ]
-  dsets_bkg = hax.runs.tags_selection(dsets_bkg, include=['sciencerun2_preliminary'], exclude=['MVoff,blinded', 'NG,MVoff', 'Noise',
-           'blinded,MVoff', 'blinded,earthquake', 'blinded,flash',
-           'blinded,messy,PMTtrip,MVoff,flash', 'blinded,messy,flash', 'messy',
-           'messy,flash', 'messy,flash,pmttrip', 'messy,pmttrip,flash',
-           'messy,pmttrip,flash,ramping', 'noise', 'test', 'trip,messy'])
+  dsets_bkg = hax.runs.tags_selection(dsets_bkg, include=['sciencerun2_preliminary'],
+        exclude=pax_settings['tags_to_exclude'])
   dsets_bkg = dsets_bkg[(dsets_bkg.location != '')]
-
 
   lifetime = (dsets_bkg["end"] - dsets_bkg["start"]).sum()
   lifetime_sec = lifetime.total_seconds()
 
   print("Total lifetime: %0.2f days" % float(lifetime_sec / 3600 / 24))
   print('%i datasets are used in this analysis.' % len(dsets_bkg.number))
-
 
   dsets_type = SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets)
 
@@ -207,10 +215,13 @@ def main(arg1):
     print("Loading minitrees: {}".format(datetime.datetime.now()))
     if parsed_args["splits"] != 1:
       splitted_arrays = np.array_split(run_names, parsed_args["splits"])
+      minitrees_to_load = pax_settings['minitrees_to_load']
+      preselection = pax_settings["preselection"]
+
       for part_idx, split in enumerate(splitted_arrays):
-        PicklePerRuns(part_idx, split, pax_settings, parsed_config, parsed_args)
+        PicklePerRuns(part_idx, len(splitted_arrays), split, pax_settings, parsed_config, parsed_args)
     else:
-        PicklePerRuns(-1, split, pax_settings, parsed_config, parsed_args)
+        PicklePerRuns(-1, 1, run_names, pax_settings, parsed_config, parsed_args)
   else:
     print("Loading minitrees not required.")
 

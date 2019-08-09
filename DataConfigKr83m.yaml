@@ -15,6 +15,25 @@ pax_settings:
     - 'PatternReconstruction'
     - 'CorrectedDoubleS1Scatter'
 
+  tags_to_exclude:
+    - 'MVoff,blinded'
+    - 'NG,MVoff'
+    - 'Noise'
+    - 'blinded,MVoff'
+    - 'blinded,earthquake'
+    - 'blinded,flash'
+    - 'blinded,messy,PMTtrip,MVoff,flash'
+    - 'blinded,messy,flash'
+    - 'messy'
+    - 'messy,flash'
+    - 'messy,flash,pmttrip'
+    - 'messy,pmttrip,flash'
+    - 'messy,pmttrip,flash,ramping'
+    - 'noise'
+    - 'test'
+    - 'trip,messy'
+    - 'distillation'
+
   preselection:
     - 'cs1<500'
     - 's2>200'

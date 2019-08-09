@@ -13,3 +13,6 @@ logs/
 *.pcm
 .session.vim
 *.swo
+*.hdf
+CheckFileSizes.py
+CheckFiles.py
