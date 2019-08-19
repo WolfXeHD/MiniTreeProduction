@@ -1,6 +1,6 @@
 filename_base: "cache_before_cuts_SR2"
-data_type: [Rn220, rn220]
-data_type_for_filename: Rn220
+data_type: [neutron_generator, neutron_generaror]
+data_type_for_filename: NeutronGenerator
 pax_settings:
   pax_version: '6.10.1'
   minitrees_to_load:

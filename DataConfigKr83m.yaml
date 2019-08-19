@@ -1,5 +1,6 @@
 filename_base: "cache_before_cuts_SR2"
-data_type: Kr83m
+data_type: [Kr83m]
+data_type_for_filename: Kr83m
 pax_settings:
   pax_version: '6.10.1'
   minitrees_to_load:

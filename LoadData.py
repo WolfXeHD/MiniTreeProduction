@@ -44,12 +44,6 @@ def parse_args(args):
       except yaml.YAMLError as exc:
           print(exc)
           raise SystemExit
-
-  supported_types = ['Bkg', 'Rn220', 'Kr83m']
-  if parsed_config["data_type"] not in supported_types:
-    print("type {} cannot be selected.".format(typ))
-    raise SystemExit
-
   return args, parsed_config
 
 
@@ -87,15 +81,10 @@ def ConfigurePax():
   return hax
 
 def SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets):
-  if parsed_config["data_type"] == "Bkg":
-    dsets_type = dsets[(datasets.source__type == 'none') ]
-  elif parsed_config["data_type"] == "Rn220":
-    dsets_type = dsets[(datasets.source__type == 'Rn220') ]
-  elif parsed_config["data_type"] == 'Kr83m':
-    dsets_type = dsets[(datasets.source__type == 'Kr83m') ]
-  else:
-    print("Unknown type {}".format(parsed_config["data_type"]))
-    raise SystemExit
+  dsets_type = []
+  for item in parsed_config["data_type"]:
+      dsets_type.append(dsets[(datasets.source__type == item)])
+  dsets_type = pd.concat(dsets_type)
   print('Total {} datasets: We are left with {} datasets'.format(parsed_config["data_type"], len(dsets_type)))
 
   # select the latest versions
@@ -103,15 +92,9 @@ def SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets):
   print('Pax version: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
 
   # Select tags
-  if parsed_config["data_type"] == "Rn220" or parsed_config["data_type"] == "Kr83m":
-    dsets_type = hax.runs.tags_selection(dsets_type, include=['sciencerun2_preliminary'],
+  dsets_type = hax.runs.tags_selection(dsets_type, include=['sciencerun2_preliminary'],
         exclude=pax_settings['tags_to_exclude'])
-  elif parsed_config["data_type"] == "Bkg":
-    dsets_type = hax.runs.tags_selection(dsets_type, include=['sciencerun2_preliminary'],
-        exclude=pax_settings['tags_to_exclude'])
-  else:
-    print("Unknown type {}".format(parsed_config["data_type"]))
-    raise SystemExit
+
   print('Remove bad tags: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
 
   # Select with a processed location
@@ -145,12 +128,12 @@ def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, 
   if part_id != -1:
     filename = "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
                                                                      filename_base=parsed_config["filename_base"],
-                                                                     data_type=parsed_config["data_type"],
+                                                                     data_type=parsed_config["data_type_for_filename"],
                                                                      time=t.strftime("%d-%m-%Y"),
                                                                      length=length)
   else:
     filename = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
-                                                               data_type=parsed_config["data_type"],
+                                                               data_type=parsed_config["data_type_for_filename"],
                                                                time=t.strftime("%d-%m-%Y"))
   if parsed_args["debug"]:
     filename = "DEBUG_" + filename
@@ -167,7 +150,7 @@ def MergeParts(parsed_args, parsed_config):
     for part_id in range(0, parsed_args["splits"]):
       file_to_open = "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
                                                                        filename_base=parsed_config["filename_base"],
-                                                                       data_type=parsed_config["data_type"],
+                                                                       data_type=parsed_config["data_type_for_filename"],
                                                                        time=t.strftime("%d-%m-%Y"),
                                                                        length=parsed_args["splits"])
 
@@ -175,7 +158,7 @@ def MergeParts(parsed_args, parsed_config):
       l_data.append(pd.read_pickle(file_to_open))
     master_df = pd.concat(l_data)
     file_to_write = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
-                                                               data_type=parsed_config["data_type"],
+                                                               data_type=parsed_config["data_type_for_filename"],
                                                                time=t.strftime("%d-%m-%Y"))
     master_df.to_pickle(file_to_write)
 
