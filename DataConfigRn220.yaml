@@ -13,6 +13,7 @@ pax_settings:
     - 'FlashIdentification'
     - 'TailCut'
     - 'PatternReconstruction'
+    - 'CorrectedDoubleS1Scatter'
 
   tags_to_exclude:
     - 'MVoff,blinded'
@@ -32,6 +33,7 @@ pax_settings:
     - 'test'
     - 'trip,messy'
     - 'distillation'
+    - 'Flash'
 
 
   preselection:
@@ -39,3 +41,4 @@ pax_settings:
     - 's2>200'
     - 'cs1 > 0'
     - 'cs2 > 0'
+    - 'drift_time > -1'
