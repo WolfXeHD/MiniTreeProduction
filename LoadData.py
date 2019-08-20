@@ -113,14 +113,14 @@ def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, 
   preselection = pax_settings["preselection"]
   df = hax.minitrees.load(part_run_names, minitrees_to_load, preselection=preselection, num_workers=4)
 
+  for cut in parsed_config['official_cuts_to_apply']:
+    exec("global cuts; cuts = " + cut)
+    # cuts = lax.lichens.sciencerun1.LowEnergyBackground()
+    cut_names = cuts.get_cut_names()
+    print("Gotten cuts:", cut_names)
 
-  # get all cience run 0 cuts
-  sr1_cuts = lax.lichens.sciencerun1.LowEnergyBackground()
-  cut_names = lax.lichens.sciencerun1.LowEnergyBackground().get_cut_names()
-  print(cut_names)
-
-  #Now run the lichens over the data we already loaded and get the booleans
-  data = sr1_cuts.process(df)
+    #Now run the lichens over the data we already loaded and get the booleans
+    df = cuts.process(df)
 
   #file_name = 'cache_before_cuts_SR2_Bkg_' + t.strftime("%d-%m-%Y") + '.pkl'
   filename_base = parsed_config["filename_base"]
@@ -139,7 +139,7 @@ def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, 
     filename = "DEBUG_" + filename
   print(filename)
 
-  data.to_pickle(filename)  # where to save it, usually as a .pkl
+  df.to_pickle(filename)  # where to save it, usually as a .pkl
 
 
 def MergeParts(parsed_args, parsed_config):
@@ -188,6 +188,7 @@ def main(arg1):
   print('%i datasets are used in this analysis.' % len(dsets_bkg.number))
 
   dsets_type = SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets)
+  print("Tags of selected data-sets are: ", dsets_type.tags.unique())
 
   if parsed_args['debug']:
     run_names = dsets_type["name"].tolist()[:10]

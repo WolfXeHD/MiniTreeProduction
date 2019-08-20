@@ -1,6 +1,8 @@
-filename_base: "cache_before_cuts_SR2"
+filename_base: "cache_before_cuts_SR1"
 data_type: [Rn220, rn220]
 data_type_for_filename: Rn220
+official_cuts_to_apply:
+  - 'lax.lichens.sciencerun1.LowEnergyBackground()'
 pax_settings:
   pax_version: '6.10.1'
   minitrees_to_load:
@@ -35,9 +37,10 @@ pax_settings:
     - 'trip,messy'
     - 'distillation'
     - 'Flash'
+    - 'flash'
 
   tags_to_include:
-    - "sciencerun2_preliminary"
+    - "sciencerun1"
 
 
   preselection:
