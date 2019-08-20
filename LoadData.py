@@ -92,7 +92,7 @@ def SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets):
   print('Pax version: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
 
   # Select tags
-  dsets_type = hax.runs.tags_selection(dsets_type, include=['sciencerun2_preliminary'],
+  dsets_type = hax.runs.tags_selection(dsets_type, include=pax_settings['tags_to_include'],
         exclude=pax_settings['tags_to_exclude'])
 
   print('Remove bad tags: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
@@ -177,7 +177,7 @@ def main(arg1):
 
   # select background data only
   dsets_bkg = dsets[(datasets.source__type == 'none') ]
-  dsets_bkg = hax.runs.tags_selection(dsets_bkg, include=['sciencerun2_preliminary'],
+  dsets_bkg = hax.runs.tags_selection(dsets_bkg, include=pax_settings['tags_to_include'],
         exclude=pax_settings['tags_to_exclude'])
   dsets_bkg = dsets_bkg[(dsets_bkg.location != '')]
 

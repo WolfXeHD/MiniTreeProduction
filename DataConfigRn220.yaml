@@ -36,6 +36,9 @@ pax_settings:
     - 'distillation'
     - 'Flash'
 
+  tags_to_include:
+    - "sciencerun2_preliminary"
+
 
   preselection:
     - 'cs1<500'
