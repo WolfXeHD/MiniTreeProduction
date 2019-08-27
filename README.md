@@ -12,8 +12,10 @@ This repo serves as skimming of minitrees to produce .pkl files.
 2. `python BatchBuilder.py --config YOUR_YAML.yaml` submits the jobs per run to the cluster. Consider testing with the `--debug`-flag. The script calls on the cluster `python treebuilder.py {run}`. Consider checking this locally without submission.
 
 ### Usage to produce pickle-file
+
 0. All minitrees should be present in some hax-version
-1. `python LoadData.py --config YOUR_YAML.yaml --load` - consider testing it with the `--debug`-flag. Additionally, the loaded pkl-files might be very large and kill your job when loading. That is why there is an option to load the files in chunks and merge subsequently. The command is:
+1. `sinteractive --cpus-per-task=4 --partition=xenon1t  --time=24:00:00 --mem-per-cpu=6000` or customize it to your needs. (Like this your shell an all sub-shell will not be killed if you exceed memory.)
+   `python LoadData.py --config YOUR_YAML.yaml --load` - consider testing it with the `--debug`-flag. Additionally, the loaded pkl-files might be very large and kill your job when loading. That is why there is an option to load the files in chunks and merge subsequently. The command is:
 
    `python LoadData.py --config YOUR_YAML.yaml --load --split YOUR_NUMBER_OF_SPLITS --merge`
 

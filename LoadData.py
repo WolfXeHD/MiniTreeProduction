@@ -52,10 +52,6 @@ def GetUniqueTagsOfDataset(dataset):
 
 
 def ConfigurePax():
-  """TODO: Docstring for ConfigurePax.
-  :returns: TODO
-
-  """
   pax_config = configuration.load_configuration('XENON1T')
   n_channels = pax_config['DEFAULT']['n_channels']
   pmts = pax_config['DEFAULT']['pmts']
@@ -102,7 +98,6 @@ def SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets):
   print('Have location: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
   return dsets_type
 
-
 def ConfigureLax():
   lax_version = lax.__version__
 
@@ -113,15 +108,16 @@ def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, 
   preselection = pax_settings["preselection"]
   df = hax.minitrees.load(part_run_names, minitrees_to_load, preselection=preselection, num_workers=4)
 
+  cut_names = []
   for cut in parsed_config['official_cuts_to_apply']:
-    exec("global cuts; cuts = " + cut)
-    # cuts = lax.lichens.sciencerun1.LowEnergyBackground()
-    cut_names = cuts.get_cut_names()
-    print("Gotten cuts:", cut_names)
+    exec("global lichens; lichens = " + cut)
+    # lichens = lax.lichens.sciencerun1.LowEnergyBackground()
+    cut_names += lichens.get_cut_names()
 
     #Now run the lichens over the data we already loaded and get the booleans
-    df = cuts.process(df)
+    df = lichens.process(df)
 
+  print("Gotten cuts:", cut_names)
   #file_name = 'cache_before_cuts_SR2_Bkg_' + t.strftime("%d-%m-%Y") + '.pkl'
   filename_base = parsed_config["filename_base"]
 
