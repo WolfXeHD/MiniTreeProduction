@@ -13,6 +13,7 @@ print("Starting now: {}".format(datetime.datetime.now()))
 import time as t
 
 from pax import configuration
+from cax.qsub import submit_job
 import lax
 import hax
 import sys
@@ -29,77 +30,122 @@ def check_positive(value):
     return ivalue
 
 def parse_args(args):
-  parser = argparse.ArgumentParser(description='Load data from processed minitrees.')
-  parser.add_argument('--debug', action='store_true')
-  parser.add_argument('--merge', action='store_true')
-  parser.add_argument('--load', action='store_true')
-  parser.add_argument('--splits', type=check_positive, default=1)
-  parser.add_argument('--config', type=str, required=True)
+    parser = argparse.ArgumentParser(description='Load data from processed minitrees.')
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--merge', action='store_true')
+    parser.add_argument('--load', action='store_true')
+    parser.add_argument('--splits', type=check_positive, default=1)
+    parser.add_argument('--config', type=str, required=True)
+    parser.add_argument('--submit', action='store_true')
+    parser.add_argument('--qos', type=str, default='xenon1t')
+    parser.add_argument('--partition', type=str, default='xenon1t')
+    parser.add_argument('--part_id', type=int, default=-1)
+    parser.add_argument('--runs', nargs='*', default=None, required=False)
 
-  args = vars(parser.parse_args())
+    args = vars(parser.parse_args())
 
-  with open(args['config'], 'r') as stream:
-      try:
-          parsed_config = (yaml.safe_load(stream))
-      except yaml.YAMLError as exc:
-          print(exc)
-          raise SystemExit
-  return args, parsed_config
+    if args["debug"]:
+      print("DEBUG turned on. Ignoring splits. Setting splits=1.")
+      args["splits"] = 1
+
+    with open(args['config'], 'r') as stream:
+        try:
+            parsed_config = (yaml.safe_load(stream))
+        except yaml.YAMLError as exc:
+            print(exc)
+            raise SystemExit
+    return args, parsed_config
 
 
 def GetUniqueTagsOfDataset(dataset):
-  return dataset.unique().tolist()
+    return dataset.unique().tolist()
 
 
 def ConfigurePax():
-  pax_config = configuration.load_configuration('XENON1T')
-  n_channels = pax_config['DEFAULT']['n_channels']
-  pmts = pax_config['DEFAULT']['pmts']
-  tpc_height = pax_config['DEFAULT']['tpc_length']
-  tpc_radius = pax_config['DEFAULT']['tpc_radius']
-  gains = pax_config['DEFAULT']['gains']
+    pax_config = configuration.load_configuration('XENON1T')
+    n_channels = pax_config['DEFAULT']['n_channels']
+    pmts = pax_config['DEFAULT']['pmts']
+    tpc_height = pax_config['DEFAULT']['tpc_length']
+    tpc_radius = pax_config['DEFAULT']['tpc_radius']
+    gains = pax_config['DEFAULT']['gains']
 
-  pax_version = '6.10.1'
-  minitree_paths = ['/home/twolf/scratch-midway2', '/dali/lgrandi/xenon1t/minitrees/pax_v'+pax_version, '/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version, '/project/lgrandi/xenon1t/minitrees/pax_v'+pax_version]
-  print(minitree_paths)
+    pax_version = '6.10.1'
+    minitree_paths = ['/home/twolf/scratch-midway2', '/dali/lgrandi/xenon1t/minitrees/pax_v'+pax_version, '/project2/lgrandi/xenon1t/minitrees/pax_v'+pax_version, '/project/lgrandi/xenon1t/minitrees/pax_v'+pax_version]
+    print(minitree_paths)
 
-  hax.__version__
-  hax.init(experiment='XENON1T',
-           pax_version_policy= pax_version,
-           raw_data_access_mode = 'local',
-           raw_data_local_path = ['project/lgrandi/xenon1t'],
-           main_data_paths=['/dali/lgrandi/xenon1t/processed/pax_v' + pax_version],
-           minitree_paths=minitree_paths,
-           make_minitrees = False,
-           log_level='DEBUG',
-           #  pax_version_policy='loose'
-          )
-  return hax
+    hax.__version__
+    hax.init(experiment='XENON1T',
+             pax_version_policy= pax_version,
+             raw_data_access_mode = 'local',
+             raw_data_local_path = ['project/lgrandi/xenon1t'],
+             main_data_paths=['/dali/lgrandi/xenon1t/processed/pax_v' + pax_version],
+             minitree_paths=minitree_paths,
+             make_minitrees = False,
+             log_level='DEBUG',
+             #  pax_version_policy='loose'
+            )
+    return hax
 
 def SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets):
-  dsets_type = []
-  for item in parsed_config["data_type"]:
-      dsets_type.append(dsets[(datasets.source__type == item)])
-  dsets_type = pd.concat(dsets_type)
-  print('Total {} datasets: We are left with {} datasets'.format(parsed_config["data_type"], len(dsets_type)))
+    dsets_type = []
+    for item in parsed_config["data_type"]:
+        dsets_type.append(dsets[(datasets.source__type == item)])
+    dsets_type = pd.concat(dsets_type)
+    print('Total {} datasets: We are left with {} datasets'.format(parsed_config["data_type"], len(dsets_type)))
 
-  # select the latest versions
-  dsets_type = dsets_type[(dsets_type.pax_version == pax_settings["pax_version"])] #
-  print('Pax version: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
+    # select the latest versions
+    dsets_type = dsets_type[(dsets_type.pax_version == pax_settings["pax_version"])] #
+    print('Pax version: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
 
-  # Select tags
-  dsets_type = hax.runs.tags_selection(dsets_type, include=pax_settings['tags_to_include'],
-        exclude=pax_settings['tags_to_exclude'])
+    # Select tags
+    dsets_type = hax.runs.tags_selection(dsets_type, include=pax_settings['tags_to_include'],
+          exclude=pax_settings['tags_to_exclude'])
 
-  print('Remove bad tags: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
+    print('Remove bad tags: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
 
-  # Select with a processed location
-  dsets_type = dsets_type[(dsets_type.location != '')]
-  print('Have location: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
-  return dsets_type
+    # Select with a processed location
+    dsets_type = dsets_type[(dsets_type.location != '')]
+    print('Have location: We are left with {} {} datasets'.format(len(dsets_type), parsed_config["data_type"]))
+    return dsets_type
 
 def ConfigureLax():
-  lax_version = lax.__version__
+    lax_version = lax.__version__
+
+def SubmitToCluster(splitted_arrays, pax_settings, parsed_config, parsed_args):
+    text = """#!/bin/bash
+#SBATCH --job-name=part{part_id}_of_{splits}_{config}
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=8000
+#SBATCH --output={logfile}
+#SBATCH --error={logfile}
+#SBATCH --account=pi-lgrandi
+#SBATCH --qos={qos}
+#SBATCH --partition={partition}
+#SBATCH --mail-user=twolf@mpi-hd.mpg.de
+#SBATCH --mail-type=NONE
+export PATH=/project/lgrandi/anaconda3/bin:$PATH
+echo PATH=$PATH
+
+cp CustomCutsToApply.py ${{TMPDIR}}
+cp LoadData.py ${{TMPDIR}}
+cp {config} ${{TMPDIR}}
+cd ${{TMPDIR}}
+ls -ltrha
+rm -f pax_event_class*
+source activate pax_head
+python LoadData.py --config {config} --load --runs {runs} --part_id {part_id} --splits {splits}
+echo "python LoadData.py --config {config} --load --runs {runs} --part_id {part_id} --splits {splits}"
+ls -ltrha
+mv *.pkl {outdir}
+
+    """
+    for part_id, runs in enumerate(splitted_arrays):
+        logfile = "part{part_id}_of_{splits}_{config}.log".format(part_id=part_id, splits=parsed_args["splits"], config=parsed_args["config"])
+        logfile = logfile.replace(".yaml", "")
+        runs_string = "'" +  "' '".join(runs) + "'"
+        y = text.format(config=parsed_args["config"], runs=runs_string, part_id=part_id, splits=parsed_args['splits'], qos=parsed_args['qos'], partition=parsed_args['partition'], logfile=logfile, outdir=parsed_config["outdir"])
+        submit_job(y)
 
 
 def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, parsed_args):
@@ -117,20 +163,21 @@ def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, 
     #Now run the lichens over the data we already loaded and get the booleans
     df = lichens.process(df)
 
+  for cut in parsed_config["custom_cuts_to_apply"]:
+    import CustomCutsToApply
+    print("Executing cut: ", cut)
+    exec(cut)
+
+
   print("Gotten cuts:", cut_names)
   #file_name = 'cache_before_cuts_SR2_Bkg_' + t.strftime("%d-%m-%Y") + '.pkl'
   filename_base = parsed_config["filename_base"]
 
-  if part_id != -1:
-    filename = "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
-                                                                     filename_base=parsed_config["filename_base"],
-                                                                     data_type=parsed_config["data_type_for_filename"],
-                                                                     time=t.strftime("%d-%m-%Y"),
-                                                                     length=length)
-  else:
-    filename = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
-                                                               data_type=parsed_config["data_type_for_filename"],
-                                                               time=t.strftime("%d-%m-%Y"))
+  filename = os.path.join(parsed_config['outdir'], "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
+                                                                   filename_base=parsed_config["filename_base"],
+                                                                   data_type=parsed_config["data_type_for_filename"],
+                                                                   time=t.strftime("%d-%m-%Y"),
+                                                                   length=length))
   if parsed_args["debug"]:
     filename = "DEBUG_" + filename
   print(filename)
@@ -144,18 +191,18 @@ def MergeParts(parsed_args, parsed_config):
   else:
     l_data = []
     for part_id in range(0, parsed_args["splits"]):
-      file_to_open = "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
+      filename = os.path.join(parsed_config["outdir"], "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
                                                                        filename_base=parsed_config["filename_base"],
                                                                        data_type=parsed_config["data_type_for_filename"],
                                                                        time=t.strftime("%d-%m-%Y"),
-                                                                       length=parsed_args["splits"])
+                                                                       length=parsed_args["splits"]))
 
 
-      l_data.append(pd.read_pickle(file_to_open))
+      l_data.append(pd.read_pickle(filename))
     master_df = pd.concat(l_data)
-    file_to_write = "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
+    file_to_write = os.path.join(parsed_config["outdir"], "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
                                                                data_type=parsed_config["data_type_for_filename"],
-                                                               time=t.strftime("%d-%m-%Y"))
+                                                               time=t.strftime("%d-%m-%Y")))
     master_df.to_pickle(file_to_write)
 
 
@@ -186,22 +233,26 @@ def main(arg1):
   dsets_type = SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets)
   print("Tags of selected data-sets are: ", dsets_type.tags.unique())
 
+  if parsed_args['runs'] is not None:
+      PicklePerRuns(parsed_args["part_id"], parsed_args["splits"], parsed_args["runs"], pax_settings, parsed_config, parsed_args)
+      raise SystemExit
+
   if parsed_args['debug']:
     run_names = dsets_type["name"].tolist()[:10]
   else:
     run_names = dsets_type["name"].tolist()
 
+  minitrees_to_load = pax_settings['minitrees_to_load']
+  preselection = pax_settings["preselection"]
+  splitted_arrays = np.array_split(run_names, parsed_args["splits"])
   if parsed_args["load"]:
     print("Loading minitrees: {}".format(datetime.datetime.now()))
-    if parsed_args["splits"] != 1:
-      splitted_arrays = np.array_split(run_names, parsed_args["splits"])
-      minitrees_to_load = pax_settings['minitrees_to_load']
-      preselection = pax_settings["preselection"]
-
+    if not parsed_args["submit"]:
       for part_idx, split in enumerate(splitted_arrays):
         PicklePerRuns(part_idx, len(splitted_arrays), split, pax_settings, parsed_config, parsed_args)
     else:
-        PicklePerRuns(-1, 1, run_names, pax_settings, parsed_config, parsed_args)
+        SubmitToCluster(splitted_arrays, pax_settings, parsed_config, parsed_args)
+
   else:
     print("Loading minitrees not required.")
 

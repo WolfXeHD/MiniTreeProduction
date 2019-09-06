@@ -1,10 +1,14 @@
 filename_base: "cache_before_cuts_SR2"
+outdir: "/home/twolf/scratch-midway2"
 data_type: [neutron_generator, neutron_generaror, AmBe]
 data_type_for_filename: NeutronGenerator
 
 official_cuts_to_apply:
   - 'lax.lichens.sciencerun1.LowEnergyBackground()'
   - 'lax.lichens.sciencerun1.LowEnergyNG()'
+custom_cuts_to_apply:
+  - 'CustomCutsToApply.CutS2SingleScatterHE(df)'
+  - 'CustomCutsToApply.CutPosDiffHE(df)'
 
 pax_settings:
   pax_version: '6.10.1'
