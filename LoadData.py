@@ -5,7 +5,7 @@ print("Starting now: {}".format(datetime.datetime.now()))
 #  import numpy as np
 #  import root_numpy
 #  import math
-#  import os
+import os
 #  import pandas as pd
 #  import matplotlib.pyplot as plt
 #  import matplotlib
@@ -141,8 +141,8 @@ mv *.pkl {outdir}
 
     """
     for part_id, runs in enumerate(splitted_arrays):
-        logfile = "part{part_id}_of_{splits}_{config}.log".format(part_id=part_id, splits=parsed_args["splits"], config=parsed_args["config"])
-        logfile = logfile.replace(".yaml", "")
+        logfile = GetFilename(parsed_config, part_id, parsed_args["splits"])
+        logfile = logfile.replace(".pkl", ".log")
         runs_string = "'" +  "' '".join(runs) + "'"
         y = text.format(config=parsed_args["config"], runs=runs_string, part_id=part_id, splits=parsed_args['splits'], qos=parsed_args['qos'], partition=parsed_args['partition'], logfile=logfile, outdir=parsed_config["outdir"])
         submit_job(y)
@@ -171,19 +171,22 @@ def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, 
 
   print("Gotten cuts:", cut_names)
   #file_name = 'cache_before_cuts_SR2_Bkg_' + t.strftime("%d-%m-%Y") + '.pkl'
-  filename_base = parsed_config["filename_base"]
 
-  filename = os.path.join(parsed_config['outdir'], "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
-                                                                   filename_base=parsed_config["filename_base"],
-                                                                   data_type=parsed_config["data_type_for_filename"],
-                                                                   time=t.strftime("%d-%m-%Y"),
-                                                                   length=length))
+  filename = GetFilename(parsed_config, part_id, length)
+
   if parsed_args["debug"]:
     filename = "DEBUG_" + filename
   print(filename)
 
   df.to_pickle(filename)  # where to save it, usually as a .pkl
 
+def GetFilename(parsed_config, part_id, length):
+    filename = os.path.join(parsed_config['outdir'], "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
+                                                                   filename_base=parsed_config["filename_base"],
+                                                                   data_type=parsed_config["data_type_for_filename"],
+                                                                   time=t.strftime("%d-%m-%Y"),
+                                                                   length=length))
+    return filename
 
 def MergeParts(parsed_args, parsed_config):
   if parsed_args["splits"] == 1:
@@ -191,14 +194,17 @@ def MergeParts(parsed_args, parsed_config):
   else:
     l_data = []
     for part_id in range(0, parsed_args["splits"]):
-      filename = os.path.join(parsed_config["outdir"], "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
-                                                                       filename_base=parsed_config["filename_base"],
-                                                                       data_type=parsed_config["data_type_for_filename"],
-                                                                       time=t.strftime("%d-%m-%Y"),
-                                                                       length=parsed_args["splits"]))
+      filename = GetFilename(parsed_config, part_id, length)
 
-
+      fail_to_merge = False
+      if not os.path.exists(filename):
+        fail_to_merge = True
+        print(filename, "does not exist. Cannot proceed to merge.")
       l_data.append(pd.read_pickle(filename))
+
+    if fail_to_merge:
+        raise SystemExit
+
     master_df = pd.concat(l_data)
     file_to_write = os.path.join(parsed_config["outdir"], "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
                                                                data_type=parsed_config["data_type_for_filename"],

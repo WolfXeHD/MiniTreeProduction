@@ -1,0 +1,53 @@
+filename_base: "cache_before_cuts_SR2"
+outdir: "/home/twolf/scratch-midway2"
+data_type: [AmBe]
+data_type_for_filename: AmBe
+official_cuts_to_apply:
+  - 'lax.lichens.sciencerun1.LowEnergyBackground()'
+custom_cuts_to_apply:
+  - 'CustomCutsToApply.CutS2SingleScatterHE(df)'
+  - 'CustomCutsToApply.CutPosDiffHE(df)'
+pax_settings:
+  pax_version: '6.10.1'
+  minitrees_to_load:
+    - 'Corrections'
+    - 'Basics'
+    - 'Fundamentals'
+    - 'Extended'
+    - 'LargestPeakProperties'
+    - 'TotalProperties'
+    - 'Proximity'
+    - 'FlashIdentification'
+    - 'TailCut'
+    - 'PatternReconstruction'
+    - 'CorrectedDoubleS1Scatter'
+
+  tags_to_exclude:
+    - 'MVoff,blinded'
+    - 'NG,MVoff'
+    - 'Noise'
+    - 'blinded,MVoff'
+    - 'blinded,earthquake'
+    - 'blinded,flash'
+    - 'blinded,messy,PMTtrip,MVoff,flash'
+    - 'blinded,messy,flash'
+    - 'messy'
+    - 'messy,flash'
+    - 'messy,flash,pmttrip'
+    - 'messy,pmttrip,flash'
+    - 'messy,pmttrip,flash,ramping'
+    - 'noise'
+    - 'test'
+    - 'trip,messy'
+    - 'distillation'
+    - 'Flash'
+
+  tags_to_include:
+    - "sciencerun1_preliminary"
+
+  preselection:
+    - 'cs1<500'
+    - 's2>200'
+    - 'cs1 > 0'
+    - 'cs2 > 0'
+    - 'drift_time > -1'

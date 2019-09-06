@@ -1,0 +1,45 @@
+filename_base: "DoubleBeta_cache_before_cuts_SR1"
+outdir: "/home/twolf/scratch-midway2"
+data_type: [Kr83m, kr83m]
+data_type_for_filename: Kr83m
+official_cuts_to_apply:
+  - 'lax.lichens.sciencerun1.LowEnergyBackground()'
+custom_cuts_to_apply:
+  - 'CustomCutsToApply.CutS2SingleScatterHE(df)'
+  - 'CustomCutsToApply.CutPosDiffHE(df)'
+pax_settings:
+  pax_version: '6.10.1'
+  minitrees_to_load:
+    - 'Basics'
+    - 'Corrections'
+    - 'Fundamentals'
+    - 'Proximity'
+    - 'FlashIdentification'
+    - ‘Extended'
+
+  tags_to_exclude:
+    - 'Flash'
+    - 'flash'
+    - 'SourceOpening'
+    - 'lowrate'
+    - 'LED'
+    - 'bad'
+    - 'messy'
+    - 'test'
+    - 'nofield'
+    - 'lowfield'
+    - 'ramping'
+    - 'commissioning'
+    - 'pmttrip'
+    - 'trip'
+    - '_pmttrip'
+    - 'SourceMoving'
+
+  tags_to_include:
+    - '*sciencerun1'
+
+  preselection:
+    - 'cs1<500'
+    - 's2>200'
+    - 'cs1 > 0'
+    - 'cs2 > 0'
