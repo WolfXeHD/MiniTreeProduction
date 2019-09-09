@@ -10,12 +10,12 @@ custom_cuts_to_apply:
 pax_settings:
   pax_version: '6.10.1'
   minitrees_to_load:
-    - 'Basics'
     - 'Corrections'
+    - 'Basics'
     - 'Fundamentals'
     - 'Proximity'
     - 'FlashIdentification'
-    - ‘Extended'
+    - 'Extended'
 
   tags_to_exclude:
     - 'Flash'
@@ -40,6 +40,6 @@ pax_settings:
 
   preselection:
     - 'cs1<500'
-    - 's2>200'
+    # - 's2>200'
     - 'cs1 > 0'
     - 'cs2 > 0'
