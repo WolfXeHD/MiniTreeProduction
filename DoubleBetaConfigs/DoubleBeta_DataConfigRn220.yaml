@@ -4,8 +4,7 @@ data_type: [Rn220, rn220]
 data_type_for_filename: Rn220
 official_cuts_to_apply:
   - 'lax.lichens.sciencerun1.LowEnergyBackground()'
-  - 'lax.lichens.sciencerun1.LowEnergyNG()'
-  - 'lax.lichens.sciencerun1.LowEnergyRn220()'
+  # - 'lax.lichens.sciencerun1.LowEnergyRn220()'
 custom_cuts_to_apply:
   - 'CustomCutsToApply.CutS2SingleScatterHE(df)'
   - 'CustomCutsToApply.CutPosDiffHE(df)'
@@ -26,32 +25,29 @@ pax_settings:
     - 'CorrectedDoubleS1Scatter'
 
   tags_to_exclude:
-    - 'MVoff,blinded'
-    - 'NG,MVoff'
-    - 'Noise'
-    - 'blinded,MVoff'
-    - 'blinded,earthquake'
-    - 'blinded,flash'
-    - 'blinded,messy,PMTtrip,MVoff,flash'
-    - 'blinded,messy,flash'
-    - 'messy'
-    - 'messy,flash'
-    - 'messy,flash,pmttrip'
-    - 'messy,pmttrip,flash'
-    - 'messy,pmttrip,flash,ramping'
-    - 'noise'
-    - 'test'
-    - 'trip,messy'
-    - 'distillation'
     - 'Flash'
     - 'flash'
+    - 'SourceOpening'
+    - 'lowrate'
+    - 'LED'
+    - 'bad'
+    - 'messy'
+    - 'test'
+    - 'nofield'
+    - 'lowfield'
+    - 'ramping'
+    - 'commissioning'
+    - 'pmttrip'
+    - 'trip'
+    - '_pmttrip'
+    - 'SourceMoving'
 
   tags_to_include:
-    - "sciencerun1"
+    - '*sciencerun1'
 
 
   preselection:
-    - 'cs1<500'
+    # - 'cs1<500'
     - 's2>200'
     - 'cs1 > 0'
     - 'cs2 > 0'

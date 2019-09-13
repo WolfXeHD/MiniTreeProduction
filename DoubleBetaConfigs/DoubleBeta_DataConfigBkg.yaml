@@ -1,4 +1,4 @@
-filename_base: "cache_before_cuts_SR2"
+filename_base: "cache_before_cuts_SR1"
 outdir: "/home/twolf/scratch-midway2"
 data_type: [none]
 data_type_for_filename: Bkg
@@ -25,29 +25,28 @@ pax_settings:
     - 'CorrectedDoubleS1Scatter'
 
   tags_to_exclude:
-    - 'MVoff,blinded'
-    - 'NG,MVoff'
-    - 'Noise'
-    - 'blinded,MVoff'
-    - 'blinded,earthquake'
-    - 'blinded,flash'
-    - 'blinded,messy,PMTtrip,MVoff,flash'
-    - 'blinded,messy,flash'
+    - 'Flash'
+    - 'flash'
+    - 'SourceOpening'
+    - 'lowrate'
+    - 'LED'
+    - 'bad'
     - 'messy'
-    - 'messy,flash'
-    - 'messy,flash,pmttrip'
-    - 'messy,pmttrip,flash'
-    - 'messy,pmttrip,flash,ramping'
-    - 'noise'
     - 'test'
-    - 'trip,messy'
-    - 'distillation'
+    - 'nofield'
+    - 'lowfield'
+    - 'ramping'
+    - 'commissioning'
+    - 'pmttrip'
+    - 'trip'
+    - '_pmttrip'
+    - 'SourceMoving'
 
   tags_to_include:
-    - "sciencerun2_preliminary"
+    - '*sciencerun1'
 
   preselection:
-    - 'cs1<500'
+    # - 'cs1<500'
     - 's2>200'
     - 'cs1 > 0'
     - 'cs2 > 0'

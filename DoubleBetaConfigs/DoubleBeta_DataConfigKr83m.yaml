@@ -16,6 +16,9 @@ pax_settings:
     - 'Proximity'
     - 'FlashIdentification'
     - 'Extended'
+    # - 'LoneS2Info'
+    # - 'PatternReconstruction'
+    # - 'TailCut'
 
   tags_to_exclude:
     - 'Flash'
@@ -40,6 +43,6 @@ pax_settings:
 
   preselection:
     - 'cs1<500'
-    # - 's2>200'
+    - 's2>200'
     - 'cs1 > 0'
     - 'cs2 > 0'

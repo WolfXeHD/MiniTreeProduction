@@ -13,7 +13,9 @@ import os
 import time as t
 
 from pax import configuration
-from cax.qsub import submit_job
+import tempfile
+import subprocess
+import shlex
 import lax
 import hax
 import sys
@@ -34,6 +36,7 @@ def parse_args(args):
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--merge', action='store_true')
     parser.add_argument('--load', action='store_true')
+    parser.add_argument('--preliminary', action='store_true')
     parser.add_argument('--splits', type=check_positive, default=1)
     parser.add_argument('--config', type=str, required=True)
     parser.add_argument('--submit', action='store_true')
@@ -151,37 +154,49 @@ mv *.pkl {outdir}
         submit_job(y)
 
 
+def submit_job(sbatch_script):
+    _, file = tempfile.mkstemp(suffix='.sbatch')
+    with open(file, 'w') as f:
+        f.write(sbatch_script)
+
+    command = "sbatch %s" % file
+    print("Executing: %s" % command )
+    subprocess.Popen(shlex.split(command)).communicate()
+    os.remove(file)
+
+
 def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, parsed_args):
-  # Load the minitrees
-  minitrees_to_load = pax_settings["minitrees_to_load"]
-  preselection = pax_settings["preselection"]
-  df = hax.minitrees.load(part_run_names, minitrees_to_load, preselection=preselection, num_workers=4)
+    # Load the minitrees
+    minitrees_to_load = pax_settings["minitrees_to_load"]
+    preselection = pax_settings["preselection"]
+    df = hax.minitrees.load(part_run_names, minitrees_to_load, preselection=preselection, num_workers=4)
 
-  cut_names = []
-  for cut in parsed_config['official_cuts_to_apply']:
-    exec("global lichens; lichens = " + cut)
-    # lichens = lax.lichens.sciencerun1.LowEnergyBackground()
-    cut_names += lichens.get_cut_names()
+    cut_names = []
+    for cut in parsed_config['official_cuts_to_apply']:
+      exec("global lichens; lichens = " + cut)
+      # lichens = lax.lichens.sciencerun1.LowEnergyBackground()
+      cut_names += lichens.get_cut_names()
 
-    #Now run the lichens over the data we already loaded and get the booleans
-    df = lichens.process(df)
+      #Now run the lichens over the data we already loaded and get the booleans
+      df = lichens.process(df)
 
-  for cut in parsed_config["custom_cuts_to_apply"]:
-    import CustomCutsToApply
-    print("Executing cut: ", cut)
-    exec(cut)
+    for cut in parsed_config["custom_cuts_to_apply"]:
+      import CustomCutsToApply
+      print("Executing cut: ", cut)
+      exec(cut)
 
 
-  print("Gotten cuts:", cut_names)
-  #file_name = 'cache_before_cuts_SR2_Bkg_' + t.strftime("%d-%m-%Y") + '.pkl'
+    print("Gotten cuts:", cut_names)
+    #file_name = 'cache_before_cuts_SR2_Bkg_' + t.strftime("%d-%m-%Y") + '.pkl'
 
-  filename = GetFilename(parsed_config, part_id, length)
+    filename = GetFilename(parsed_config, part_id, length)
 
-  if parsed_args["debug"]:
-    filename = "DEBUG_" + filename
-  print(filename)
+    if parsed_args["debug"]:
+      file_split = os.path.split(filename)
+      filename = os.path.join(file_split[0], "DEBUG_" + file_split[1])
+    print(filename)
 
-  df.to_pickle(filename)  # where to save it, usually as a .pkl
+    df.to_pickle(filename)  # where to save it, usually as a .pkl
 
 def GetFilename(parsed_config, part_id, length):
     filename = os.path.join(parsed_config['outdir'], "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
@@ -192,82 +207,85 @@ def GetFilename(parsed_config, part_id, length):
     return filename
 
 def MergeParts(parsed_args, parsed_config):
-  if parsed_args["splits"] == 1:
-    print("No merge needed!")
-  else:
-    l_data = []
-    for part_id in range(0, parsed_args["splits"]):
-      filename = GetFilename(parsed_config, part_id, length)
+    if parsed_args["splits"] == 1:
+        print("No merge needed!")
+    else:
+        print("Starting merge")
+        l_files = []
+        fail_to_merge = False
+        for part_id in range(0, parsed_args["splits"]):
+            filename = GetFilename(parsed_config, part_id, parsed_args["splits"])
 
-      fail_to_merge = False
-      if not os.path.exists(filename):
-        fail_to_merge = True
-        print(filename, "does not exist. Cannot proceed to merge.")
-      l_data.append(pd.read_pickle(filename))
+            if not os.path.exists(filename):
+              fail_to_merge = True
+              print(filename, "does not exist. Cannot proceed to merge.")
+            l_files.append(filename)
 
-    if fail_to_merge:
-        raise SystemExit
+        if fail_to_merge:
+            raise SystemExit
 
-    master_df = pd.concat(l_data)
-    file_to_write = os.path.join(parsed_config["outdir"], "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
-                                                               data_type=parsed_config["data_type_for_filename"],
-                                                               time=t.strftime("%d-%m-%Y")))
-    master_df.to_pickle(file_to_write)
+        l_data = [pd.read_pickle(this_file) for this_file in l_files]
+
+        master_df = pd.concat(l_data)
+        file_to_write = os.path.join(parsed_config["outdir"], "{filename_base}_{data_type}_{time}.pkl".format(filename_base=parsed_config["filename_base"],
+                                                                   data_type=parsed_config["data_type_for_filename"],
+                                                                   time=t.strftime("%d-%m-%Y")))
+        master_df.to_pickle(file_to_write)
 
 
 def main(arg1):
-  parsed_args, parsed_config = parse_args(arg1)
-  pax_settings = parsed_config["pax_settings"]
+    parsed_args, parsed_config = parse_args(arg1)
+    pax_settings = parsed_config["pax_settings"]
 
-  ConfigurePax(parsed_args, parsed_config)
+    ConfigurePax(parsed_args, parsed_config)
 
-  if parsed_args['runs'] is not None:
-      PicklePerRuns(parsed_args["part_id"], parsed_args["splits"], parsed_args["runs"], pax_settings, parsed_config, parsed_args)
-      raise SystemExit
+    if parsed_args['runs'] is not None:
+        PicklePerRuns(parsed_args["part_id"], parsed_args["splits"], parsed_args["runs"], pax_settings, parsed_config, parsed_args)
+        raise SystemExit
 
-  datasets = hax.runs.datasets # this variable holds all dataset info
+    datasets = hax.runs.datasets # this variable holds all dataset info
 
-  # copy and set data
-  dsets = datasets
-  dsets['start_date'] = dsets.start.dt.date
+    # copy and set data
+    dsets = datasets
+    dsets['start_date'] = dsets.start.dt.date
 
-  # select background data only
-  dsets_bkg = dsets[(datasets.source__type == 'none') ]
-  dsets_bkg = hax.runs.tags_selection(dsets_bkg, include=pax_settings['tags_to_include'],
-        exclude=pax_settings['tags_to_exclude'])
-  dsets_bkg = dsets_bkg[(dsets_bkg.location != '')]
+    # select background data only
+    dsets_bkg = dsets[(datasets.source__type == 'none') ]
+    dsets_bkg = hax.runs.tags_selection(dsets_bkg, include=pax_settings['tags_to_include'],
+          exclude=pax_settings['tags_to_exclude'])
+    dsets_bkg = dsets_bkg[(dsets_bkg.location != '')]
 
-  lifetime = (dsets_bkg["end"] - dsets_bkg["start"]).sum()
-  lifetime_sec = lifetime.total_seconds()
+    lifetime = (dsets_bkg["end"] - dsets_bkg["start"]).sum()
+    lifetime_sec = lifetime.total_seconds()
 
-  print("Total lifetime: %0.2f days" % float(lifetime_sec / 3600 / 24))
-  print('%i datasets are used in this analysis.' % len(dsets_bkg.number))
+    print("Total lifetime: %0.2f days" % float(lifetime_sec / 3600 / 24))
+    print('%i datasets are used in this analysis.' % len(dsets_bkg.number))
 
-  dsets_type = SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets)
-  print("Tags of selected data-sets are: ", dsets_type.tags.unique())
+    dsets_type = SelectDataAccordingToType(parsed_config, pax_settings, dsets, datasets)
+    print("Tags of selected data-sets are: ", dsets_type.tags.unique())
 
 
-  if parsed_args['debug']:
-    run_names = dsets_type["name"].tolist()[:10]
-  else:
-    run_names = dsets_type["name"].tolist()
-
-  minitrees_to_load = pax_settings['minitrees_to_load']
-  preselection = pax_settings["preselection"]
-  splitted_arrays = np.array_split(run_names, parsed_args["splits"])
-  if parsed_args["load"]:
-    print("Loading minitrees: {}".format(datetime.datetime.now()))
-    if not parsed_args["submit"]:
-      for part_idx, split in enumerate(splitted_arrays):
-        PicklePerRuns(part_idx, len(splitted_arrays), split, pax_settings, parsed_config, parsed_args)
+    if parsed_args['debug']:
+      run_names = dsets_type["name"].tolist()[:20]
     else:
-        SubmitToCluster(splitted_arrays, pax_settings, parsed_config, parsed_args)
+      run_names = dsets_type["name"].tolist()
 
-  else:
-    print("Loading minitrees not required.")
+    minitrees_to_load = pax_settings['minitrees_to_load']
+    preselection = pax_settings["preselection"]
+    splitted_arrays = np.array_split(run_names, parsed_args["splits"])
+    if parsed_args["load"]:
+      print("Loading minitrees: {}".format(datetime.datetime.now()))
+      if not parsed_args["submit"]:
+        for part_idx, split in enumerate(splitted_arrays):
+          PicklePerRuns(part_idx, len(splitted_arrays), split, pax_settings, parsed_config, parsed_args)
+      else:
+          SubmitToCluster(splitted_arrays, pax_settings, parsed_config, parsed_args)
 
-  if parsed_args["merge"]:
-    MergeParts(parsed_args, parsed_config)
+    else:
+      print("Loading minitrees not required.")
+
+    if parsed_args["merge"]:
+      MergeParts(parsed_args, parsed_config)
 
 
 if __name__ == "__main__":
