@@ -8,6 +8,7 @@ official_cuts_to_apply:
 custom_cuts_to_apply:
   - 'CustomCutsToApply.CutS2SingleScatterHE(df)'
   - 'CustomCutsToApply.CutPosDiffHE(df)'
+  - 'CustomCutsToApply.S1AreaFractionTop_he(df)'
 
 pax_settings:
   pax_version: '6.10.1'

@@ -1,15 +1,7 @@
 import datetime
 import numpy as np
 print("Starting now: {}".format(datetime.datetime.now()))
-#  import ROOT
-#  import numpy as np
-#  import root_numpy
-#  import math
 import os
-#  import pandas as pd
-#  import matplotlib.pyplot as plt
-#  import matplotlib
-
 import time as t
 
 from pax import configuration
@@ -146,7 +138,7 @@ mv *.pkl {outdir}
     """
     for part_id, runs in enumerate(splitted_arrays):
         logfile = GetFilename(parsed_config, part_id, parsed_args["splits"])
-        logfile = logfile.replace(".pkl", ".log")
+        logfile = logfile.replace(".hdf", ".log")
         config_in_tmp = os.path.basename(parsed_args["config"])
         runs_string = "'" +  "' '".join(runs) + "'"
         y = text.format(config=parsed_args["config"], runs=runs_string, part_id=part_id, splits=parsed_args['splits'], qos=parsed_args['qos'], partition=parsed_args['partition'], logfile=logfile, outdir=parsed_config["outdir"],
@@ -196,10 +188,10 @@ def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, 
       filename = os.path.join(file_split[0], "DEBUG_" + file_split[1])
     print(filename)
 
-    df.to_pickle(filename)  # where to save it, usually as a .pkl
+    df.to_hdf(filename, key='df_raw', format='table')  # where to save it, usually as a .pkl
 
 def GetFilename(parsed_config, part_id, length):
-    filename = os.path.join(parsed_config['outdir'], "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.pkl".format(part=part_id,
+    filename = os.path.join(parsed_config['outdir'], "Part{part}_of_{length}_{filename_base}_{data_type}_{time}.hdf".format(part=part_id,
                                                                    filename_base=parsed_config["filename_base"],
                                                                    data_type=parsed_config["data_type_for_filename"],
                                                                    time=t.strftime("%d-%m-%Y"),
@@ -266,7 +258,7 @@ def main(arg1):
 
 
     if parsed_args['debug']:
-      run_names = dsets_type["name"].tolist()[:20]
+      run_names = dsets_type["name"].tolist()[:2]
     else:
       run_names = dsets_type["name"].tolist()
 
@@ -290,3 +282,16 @@ def main(arg1):
 
 if __name__ == "__main__":
       main(sys.argv[:1])
+
+
+#  from runDB import get_collection
+#
+#  collection = get_collection()
+#  query = {'data': {'$elemMatch': {'host': 'midway-login1', 'status': 'transferred',
+#                                       'pax_version': pax_version
+#                                      }
+#                               }
+#                        }
+#  cursor = collection.find(query, {‘number’: 1})
+#  runlist = [r[‘number’] for r in cursor]
+
