@@ -5,6 +5,7 @@ import os
 import time as t
 
 from pax import configuration
+import glob
 import tempfile
 import subprocess
 import shlex
@@ -72,7 +73,7 @@ def ConfigurePax(parsed_args, parsed_config):
     hax.init(experiment='XENON1T',
              pax_version_policy= pax_version,
              raw_data_access_mode = 'local',
-             raw_data_local_path = ['project/lgrandi/xenon1t'],
+             raw_data_local_path = ['/home/twolf/my_wave_forms', '/dali/lgrandi/xenon1t/raw_for_waveforms'], # this folder should contain all symlinks named after the run_name pointing to the raw-data
              main_data_paths=['/dali/lgrandi/xenon1t/processed/pax_v' + pax_version],
              minitree_paths=minitree_paths,
              make_minitrees = False,
@@ -157,7 +158,7 @@ def submit_job(sbatch_script):
     os.remove(file)
 
 
-def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, parsed_args):
+def PicklePerRuns(dsets, part_id, length, part_run_names, pax_settings, parsed_config, parsed_args):
     # Load the minitrees
     minitrees_to_load = pax_settings["minitrees_to_load"]
     preselection = pax_settings["preselection"]
@@ -188,6 +189,8 @@ def PicklePerRuns(part_id, length, part_run_names, pax_settings, parsed_config, 
       filename = os.path.join(file_split[0], "DEBUG_" + file_split[1])
     print(filename)
 
+    df['run_name'] = [dsets.loc[dsets.number==run_number, 'name'].values[0] for run_number in df.run_number.values]
+    df = find_downloaded_events(df, dsets)
     df.to_hdf(filename, key='df_raw', format='table')  # where to save it, usually as a .pkl
 
 def GetFilename(parsed_config, part_id, length):
@@ -225,17 +228,40 @@ def MergeParts(parsed_args, parsed_config):
         master_df.to_pickle(file_to_write)
 
 
+def find_downloaded_events(df, dsets):
+    #  Navigate through the first raw data loacl path in hax config
+    #  global dsets
+    #  dsets = hax.runs.datasets
+    df['raw_data']=False
+    for run_number in df.run_number.unique():
+        run_name = dsets.loc[dsets.number==run_number, 'name'].values[0]
+        for folder in glob.glob(hax.config['raw_data_local_path'][0]+'/*%s*'%run_name):
+
+            if 'SR00' in folder:
+                continue
+            for file in os.listdir(folder):
+                min_event_number, max_event_number = file.split('-')[2:4]
+
+                df.loc[(df.run_number==run_number) 
+                       & (df.event_number>int(min_event_number))
+                       & (df.event_number<int(max_event_number)),
+                       'raw_data'
+                      ] = True
+    return df
+
+
 def main(arg1):
     parsed_args, parsed_config = parse_args(arg1)
     pax_settings = parsed_config["pax_settings"]
 
     ConfigurePax(parsed_args, parsed_config)
 
+    datasets = hax.runs.datasets # this variable holds all dataset info
+
     if parsed_args['runs'] is not None:
-        PicklePerRuns(parsed_args["part_id"], parsed_args["splits"], parsed_args["runs"], pax_settings, parsed_config, parsed_args)
+        PicklePerRuns(datasets, parsed_args["part_id"], parsed_args["splits"], parsed_args["runs"], pax_settings, parsed_config, parsed_args)
         raise SystemExit
 
-    datasets = hax.runs.datasets # this variable holds all dataset info
 
     # copy and set data
     dsets = datasets
@@ -269,7 +295,7 @@ def main(arg1):
       print("Loading minitrees: {}".format(datetime.datetime.now()))
       if not parsed_args["submit"]:
         for part_idx, split in enumerate(splitted_arrays):
-          PicklePerRuns(part_idx, len(splitted_arrays), split, pax_settings, parsed_config, parsed_args)
+          PicklePerRuns(datasets, part_idx, len(splitted_arrays), split, pax_settings, parsed_config, parsed_args)
       else:
           SubmitToCluster(splitted_arrays, pax_settings, parsed_config, parsed_args)
 
