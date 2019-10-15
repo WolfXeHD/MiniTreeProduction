@@ -168,7 +168,11 @@ def PicklePerRuns(dsets, part_id, length, part_run_names, pax_settings, parsed_c
     for cut in parsed_config['official_cuts_to_apply']:
       exec("global lichens; lichens = " + cut)
       # lichens = lax.lichens.sciencerun1.LowEnergyBackground()
-      cut_names += lichens.get_cut_names()
+      test_function = getattr(lichens, "get_cut_names", None)
+      if callable(test_function):
+          cut_names += lichens.get_cut_names()
+      else:
+          cut_names.append(lichens.name())
 
       #Now run the lichens over the data we already loaded and get the booleans
       df = lichens.process(df)
