@@ -4,11 +4,12 @@ data_type: [Rn220, rn220]
 data_type_for_filename: Rn220
 official_cuts_to_apply:
   - 'lax.lichens.sciencerun1.LowEnergyBackground()'
-  # - 'lax.lichens.sciencerun1.LowEnergyRn220()'
-custom_cuts_to_apply:
-  - 'CustomCutsToApply.CutS2SingleScatterHE(df)'
-  - 'CustomCutsToApply.CutPosDiffHE(df)'
-  - 'CustomCutsToApply.S1AreaFractionTop_he(df)'
+  - 'lax.lichens.postsr1.S2Width_HE()'
+  - 'lax.lichens.postsr1.CS2AreaFractionTopExtended()'
+  - 'lax.lichens.postsr1.S2SingleScatter_HE()'
+  - 'lax.lichens.postsr1.S1AreaFractionTop_he()'
+  - 'lax.lichens.postsr1.PosDiff_HE()'
+custom_cuts_to_apply: []
 
 pax_settings:
   pax_version: '6.10.1'

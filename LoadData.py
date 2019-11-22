@@ -163,6 +163,7 @@ def PicklePerRuns(dsets, part_id, length, part_run_names, pax_settings, parsed_c
     minitrees_to_load = pax_settings["minitrees_to_load"]
     preselection = pax_settings["preselection"]
     df = hax.minitrees.load(part_run_names, minitrees_to_load, preselection=preselection, num_workers=4)
+    print("The gotten dataframe has a length of:", len(df), "events")
 
     cut_names = []
     for cut in parsed_config['official_cuts_to_apply']:
@@ -312,16 +313,3 @@ def main(arg1):
 
 if __name__ == "__main__":
       main(sys.argv[:1])
-
-
-#  from runDB import get_collection
-#
-#  collection = get_collection()
-#  query = {'data': {'$elemMatch': {'host': 'midway-login1', 'status': 'transferred',
-#                                       'pax_version': pax_version
-#                                      }
-#                               }
-#                        }
-#  cursor = collection.find(query, {‘number’: 1})
-#  runlist = [r[‘number’] for r in cursor]
-

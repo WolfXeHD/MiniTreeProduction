@@ -16,7 +16,7 @@ x = """#!/bin/bash
 #SBATCH --partition={partition}
 #SBATCH --mail-user=twolf@mpi-hd.mpg.de
 #SBATCH --mail-type=NONE
-export PATH=/project/lgrandi/anaconda3/bin:$PATH
+export PATH="/cvmfs/xenon.opensciencegrid.org/releases/anaconda/2.4/bin:$PATH"
 export PROCESSING_DIR=/home/twolf/scratch-midway2/production_{run}
 echo PATH=$PATH
 
